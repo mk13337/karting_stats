@@ -1,37 +1,38 @@
-import os
 import json
-from datetime import datetime
 from pymongo import MongoClient
-from settings_ import MONGO_CONNECT_ST
 
+# Функция для преобразования JSON данных в формат, удобный для MongoDB
+def transform_data(data):
+    for document in data:
+        if '_id' in document and '$oid' in document['_id']:
+            document['_id'] = document['_id']['$oid']
+        if 'date' in document and '$date' in document['date']:
+            document['date'] = document['date']['$date']
+        if 'karts' in document:
+            for kart in document['karts']:
+                if 'pilot_ID' in kart and '$oid' in kart['pilot_ID']:
+                    kart['pilot_ID'] = kart['pilot_ID']['$oid']
+    return data
 
-def create_backup():
-    # Подключение к базе данных MongoDB
-    client = MongoClient(MONGO_CONNECT_ST)
-    db = client['karting']
+# Подключение к MongoDB
+client = MongoClient('mongodb://localhost:27017/')
+db = client['karting']
+heats_collection = db['heats']
+users_collection = db['users']
 
-    # Получение текущей даты для имени папки
-    current_date = datetime.now().strftime("%Y%m%d")
-    backup_dir = f"backup/{current_date}"
+def import_data_if_empty(collection, json_file_path):
+    if collection.count_documents({}) == 0:
+        with open(json_file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            data = transform_data(data)
+            collection.insert_many(data)
+        print(f"Data imported from {json_file_path} to {collection.name} collection.")
+    else:
+        print(f"{collection.name} collection already has data.")
 
-    # Создание директории для бэкапа, если она не существует
-    os.makedirs(backup_dir, exist_ok=True)
-
-    # Функция для создания бэкапа коллекции
-    def backup_collection(collection_name):
-        collection = db[collection_name]
-        documents = list(collection.find({}))
-        backup_file_path = os.path.join(backup_dir, f"{collection_name}.json")
-
-        with open(backup_file_path, 'w', encoding='utf-8') as file:
-            json.dump(documents, file, default=str, ensure_ascii=False, indent=4)
-
-        print(f"Backup for collection '{collection_name}' created at '{backup_file_path}'")
-
-    # Создание бэкапа для каждой коллекции
-    collections = db.list_collection_names()
-    for collection_name in collections:
-        backup_collection(collection_name)
+def main():
+    import_data_if_empty(heats_collection, 'db/karting.heats.json')
+    import_data_if_empty(users_collection, 'db/karting.users.json')
 
 if __name__ == "__main__":
-    create_backup()
+    main()
