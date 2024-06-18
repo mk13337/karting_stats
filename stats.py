@@ -2,10 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pymongo import MongoClient
 from datetime import datetime
-import matplotlib.pyplot as plt
-import numpy as np
-from pymongo import MongoClient
-from datetime import datetime
 import os
 from collections import Counter
 
