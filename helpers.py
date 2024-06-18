@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from datetime import datetime
+from babel.dates import format_datetime
 
 def get_recent_heats(user_identifier, num_heats):
     # Подключение к MongoDB
@@ -29,12 +30,7 @@ def get_recent_heats(user_identifier, num_heats):
                 except ValueError:
                     date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
 
-        # Преобразование даты в нужный формат
-        formatted_date = date.strftime("%d %B")
-        formatted_date = formatted_date.replace('January', 'Января').replace('February', 'Февраля').replace('March', 'Марта')\
-                                       .replace('April', 'Апреля').replace('May', 'Мая').replace('June', 'Июня')\
-                                       .replace('July', 'Июля').replace('August', 'Августа').replace('September', 'Сентября')\
-                                       .replace('October', 'Октября').replace('November', 'Ноября').replace('December', 'Декабря')
+        formatted_date = format_datetime(date, "d MMMM HH:mm", locale='ru_RU')
 
         recent_heats.append({
             'heat_id': heat['heat_id'],
