@@ -1,0 +1,2 @@
+TELEGRAM_API_TOKEN=''
+MONGO_CONNECT_ST='mongodb://localhost:27017/'
