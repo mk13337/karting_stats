@@ -1,21 +1,25 @@
 import json
-import os
 from pymongo import MongoClient
-from tqdm import tqdm
+from settings_ import MONGO_CONNECT_ST
 
 # Подключение к MongoDB
-client = MongoClient('mongodb://localhost:27017/')
+client = MongoClient(MONGO_CONNECT_ST)
 db = client['karting']
 heats_collection = db['heats']
+users_collection = db['users']
 
+def import_data_if_empty(collection, json_file_path):
+    if collection.count_documents({}) == 0:
+        with open(json_file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            collection.insert_many(data)
+        print(f"Data imported from {json_file_path} to {collection.name} collection.")
+    else:
+        print(f"{collection.name} collection already has data.")
 
-file_path = 'db/karting.heats.json'
+def main():
+    import_data_if_empty(heats_collection, 'db/karting.heats.json')
+    import_data_if_empty(users_collection, 'db/karting.users.json')
 
-with open(file_path, 'r', encoding='utf-8') as file:
-    heats_data = json.load(file)
-
-print("Импорт данных в базу данных...")
-for heat in tqdm(heats_data, desc="Importing heats", unit="heat"):
-    heats_collection.insert_one(heat)
-
-print("Импорт завершён.")
+if __name__ == "__main__":
+    main()
