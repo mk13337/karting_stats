@@ -32,7 +32,10 @@ def import_data_if_empty(collection, json_file_path):
 
 def main():
     import_data_if_empty(heats_collection, 'db/karting.heats.json')
-    import_data_if_empty(users_collection, 'db/karting.users.json')
+    try:
+        import_data_if_empty(users_collection, 'db/karting.users.json')
+    except: Exception
+
 
 if __name__ == "__main__":
     main()
