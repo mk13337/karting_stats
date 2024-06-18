@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from datetime import datetime
 
 def get_recent_heats(user_identifier, num_heats):
     # Подключение к MongoDB
@@ -17,10 +18,19 @@ def get_recent_heats(user_identifier, num_heats):
 
     recent_heats = []
     for heat in heats:
+        date = heat['date']
+        # Преобразование строки в объект datetime, если необходимо
+        if isinstance(date, str):
+            try:
+                date = datetime.fromisoformat(date)
+            except ValueError:
+                # Попытка другого формата, если fromisoformat не сработает
+                date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+
         recent_heats.append({
             'heat_id': heat['heat_id'],
             'name': heat['name'],
-            'date': heat['date'].strftime("%Y-%m-%d %H:%M:%S")
+            'date': date.strftime("%Y-%m-%d %H:%M:%S")
         })
 
     return recent_heats
