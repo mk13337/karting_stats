@@ -22,10 +22,12 @@ def get_recent_heats(user_identifier, num_heats):
         # Преобразование строки в объект datetime, если необходимо
         if isinstance(date, str):
             try:
-                date = datetime.fromisoformat(date)
+                date = datetime.fromisoformat(date.replace('Z', '+00:00'))
             except ValueError:
-                # Попытка другого формата, если fromisoformat не сработает
-                date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                try:
+                    date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
+                except ValueError:
+                    date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
 
         recent_heats.append({
             'heat_id': heat['heat_id'],
