@@ -29,10 +29,17 @@ def get_recent_heats(user_identifier, num_heats):
                 except ValueError:
                     date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
 
+        # Преобразование даты в нужный формат
+        formatted_date = date.strftime("%d %B")
+        formatted_date = formatted_date.replace('January', 'Января').replace('February', 'Февраля').replace('March', 'Марта')\
+                                       .replace('April', 'Апреля').replace('May', 'Мая').replace('June', 'Июня')\
+                                       .replace('July', 'Июля').replace('August', 'Августа').replace('September', 'Сентября')\
+                                       .replace('October', 'Октября').replace('November', 'Ноября').replace('December', 'Декабря')
+
         recent_heats.append({
             'heat_id': heat['heat_id'],
             'name': heat['name'],
-            'date': date.strftime("%Y-%m-%d %H:%M:%S")
+            'date': formatted_date
         })
 
     return recent_heats
