@@ -3,6 +3,11 @@ from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 
+import requests
+from bs4 import BeautifulSoup
+from pymongo import MongoClient
+from datetime import datetime
+
 
 # Функция для получения сегодняшних заездов
 def get_today_heats(url):
@@ -33,10 +38,6 @@ def get_today_heats(url):
 	return heats
 
 
-import requests
-from bs4 import BeautifulSoup
-from pymongo import MongoClient
-from datetime import datetime
 
 
 def parse_heat(heat_id):
@@ -126,7 +127,7 @@ for heat_name, heat_id in today_heats:
 	start_time = datetime.strptime(date_time, "%d %b %Y, %H:%M")
 
 	# Проверка, прошло ли 15 минут с начала заезда
-	if datetime.now() - start_time < timedelta(minutes=15):
+	if datetime.now() - start_time < timedelta(minutes=-195):
 		print(f"Heat {heat_id} started less than 15 minutes ago. Skipping...")
 		continue
 

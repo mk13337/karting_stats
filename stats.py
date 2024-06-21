@@ -138,7 +138,7 @@ def analyze_user_heats(user_identifier, num_heats):
         return "", []
 
     # Сортировка заездов от старых к новым
-    user_heats = sorted(user_heats, key=lambda x: x['date'])
+    user_heats = sorted(user_heats, key=lambda x: datetime.fromisoformat(x['date'].replace('Z', '+00:00')) if isinstance(x['date'], str) else x['date'])
 
     # Построение графиков
     heat_numbers = list(range(1, len(user_heats) + 1))
