@@ -10,6 +10,12 @@ def create_directory(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+def make_naive(dt):
+    if dt.tzinfo is not None:
+        return dt.replace(tzinfo=None)
+    return dt
+
+
 
 def analyze_heat_by_user(heat_id, nickname):
     # Подключение к MongoDB
@@ -138,7 +144,9 @@ def analyze_user_heats(user_identifier, num_heats):
         return "", []
 
     # Сортировка заездов от старых к новым
-    user_heats = sorted(user_heats, key=lambda x: datetime.fromisoformat(x['date'].replace('Z', '+00:00')) if isinstance(x['date'], str) else x['date'])
+    user_heats = sorted(user_heats, key=lambda x: make_naive(
+        datetime.fromisoformat(x['date'].replace('Z', '+00:00'))) if isinstance(x['date'], str) else make_naive(
+        x['date']))
 
     # Построение графиков
     heat_numbers = list(range(1, len(user_heats) + 1))
