@@ -300,8 +300,20 @@ def compare_user_heats(user1_identifier, user2_identifier, num_heats):
             print(f"Not enough heats to analyze for user {user_identifier}.")
             return []
 
-        # Сортировка заездов от старых к новым
+        for heat in user_heats:
+            if isinstance(heat['date'], str):
+                try:
+                    heat['date'] = datetime.fromisoformat(heat['date'].replace('Z', '+00:00'))
+                except ValueError:
+                    try:
+                        heat['date'] = datetime.strptime(heat['date'], "%Y-%m-%dT%H:%M:%S.%fZ")
+                    except ValueError:
+                        heat['date'] = datetime.strptime(heat['date'], "%Y-%m-%d %H:%M:%S")
+
+            # Сортировка заездов от старых к новым
         user_heats = sorted(user_heats, key=lambda x: x['date'])
+
+
         return user_heats
 
     user1_heats = get_user_heats(user1_identifier, num_heats)
