@@ -43,6 +43,10 @@ def handle_all_messages(message):
             handle_first_driver(message)
         elif state == 'awaiting_second_driver':
             handle_second_driver(message)
+        elif state == 'awaiting_new_nickname':
+            handle_new_nickname(message)
+        elif state == 'awaiting_num_heats':
+            handle_num_heats(message)
         else:
             handle_main_menu(message)
     else:
@@ -51,7 +55,6 @@ def handle_all_messages(message):
             handle_nickname(message)
         elif state == 'awaiting_subscription':
             handle_subscription(message)
-
 
 def handle_nickname(message):
     user_identifier = message.text.strip()
@@ -67,7 +70,8 @@ def handle_subscription(message):
         'telegram_nickname': message.from_user.username,
         'telegram_id': message.chat.id,
         'karting_nickname_or_id': user_states[message.chat.id]['nickname'],
-        'subscription': subscription
+        'subscription': subscription,
+        'num_heats_analyze': 10  # значение по умолчанию
     }
     users_collection.update_one(
         {'telegram_id': message.chat.id},
@@ -99,6 +103,15 @@ def get_stats_menu_markup():
     markup.add(btn5)  # Новая кнопка
     return markup
 
+def get_settings_menu_markup():
+    markup = types.InlineKeyboardMarkup()
+    btn1 = types.InlineKeyboardButton("Привязанный никнейм", callback_data="change_nickname")
+    btn2 = types.InlineKeyboardButton("Уведомление о новых заездах", callback_data="change_subscription")
+    btn3 = types.InlineKeyboardButton("Количество заездов для анализа", callback_data="change_num_heats")
+    markup.add(btn1)
+    markup.add(btn2)
+    markup.add(btn3)
+    return markup
 
 def show_main_menu(message):
     bot.send_message(message.chat.id, "Выберите действие:", reply_markup=get_main_menu_markup())
@@ -107,11 +120,13 @@ def handle_main_menu(message):
     if message.text == "Статистика":
         bot.send_message(message.chat.id, "Выберите действие:", reply_markup=get_stats_menu_markup())
     elif message.text == "Настройки":
-        bot.send_message(message.chat.id, "Настройки пока недоступны.", reply_markup=get_main_menu_markup())
+        bot.send_message(message.chat.id, "Что вы хотите изменить?", reply_markup=get_settings_menu_markup())
 
 def handle_other_user(message):
     other_user_identifier = message.text.strip()
-    text, pictures = analyze_user_heats(other_user_identifier, 10)
+    user_data = users_collection.find_one({'telegram_id': message.chat.id})
+    num_heats = user_data.get('num_heats_analyze', 10)
+    text, pictures = analyze_user_heats(other_user_identifier, num_heats)
     bot.send_message(message.chat.id, text, parse_mode='Markdown', disable_web_page_preview=True, reply_markup=get_main_menu_markup())
     for pic in pictures:
         with open(pic[0], 'rb') as photo:
@@ -123,7 +138,8 @@ def handle_analyze_own_heats(call):
     user_data = users_collection.find_one({'telegram_id': call.message.chat.id})
     if user_data:
         user_identifier = user_data['karting_nickname_or_id']
-        text, pictures = analyze_user_heats(user_identifier, 10)
+        num_heats = user_data.get('num_heats_analyze', 10)
+        text, pictures = analyze_user_heats(user_identifier, num_heats)
         bot.send_message(call.message.chat.id, text, parse_mode='Markdown', disable_web_page_preview=True, reply_markup=get_main_menu_markup())
         for pic in pictures:
             with open(pic[0], 'rb') as photo:
@@ -215,14 +231,67 @@ def handle_first_driver(message):
 def handle_second_driver(message):
     second_driver = message.text.strip()
     first_driver = user_states[message.chat.id]['first_driver']
-    text, pictures = compare_user_heats(first_driver, second_driver, 10)
+    user_data = users_collection.find_one({'telegram_id': message.chat.id})
+    num_heats = user_data.get('num_heats_analyze', 10)
+    text, pictures = compare_user_heats(first_driver, second_driver, num_heats)
     bot.send_message(message.chat.id, text, parse_mode='Markdown', disable_web_page_preview=True, reply_markup=get_main_menu_markup())
     for pic in pictures:
         with open(pic[0], 'rb') as photo:
             bot.send_photo(message.chat.id, photo, caption=pic[1], parse_mode='Markdown')
     user_states[message.chat.id] = {'state': 'main_menu'}
 
+@bot.callback_query_handler(func=lambda call: call.data == "change_nickname")
+def handle_change_nickname(call):
+    bot.send_message(call.message.chat.id, "Пожалуйста, введите свой гоночный никнейм или ID с сайта https://timing.batyrshin.name")
+    user_states[call.message.chat.id] = {'state': 'awaiting_new_nickname'}
 
+def handle_new_nickname(message):
+    new_nickname = message.text.strip()
+    user_data = users_collection.find_one({'telegram_id': message.chat.id})
+    old_nickname = user_data['karting_nickname_or_id']
+    users_collection.update_one(
+        {'telegram_id': message.chat.id},
+        {'$set': {'karting_nickname_or_id': new_nickname}}
+    )
+    bot.send_message(message.chat.id, f"Никнейм изменён с {old_nickname} на {new_nickname}", reply_markup=get_main_menu_markup())
+    user_states[message.chat.id] = {'state': 'main_menu'}
+
+@bot.callback_query_handler(func=lambda call: call.data == "change_subscription")
+def handle_change_subscription(call):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+    markup.add('Да', 'Нет')
+    bot.send_message(call.message.chat.id, "Хотите ли вы получать уведомления о новых заездах?", reply_markup=markup)
+    user_states[call.message.chat.id] = {'state': 'awaiting_subscription_change'}
+
+@bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get('state') == 'awaiting_subscription_change')
+def handle_subscription_change(message):
+    subscription = message.text.strip().lower() == 'да'
+    users_collection.update_one(
+        {'telegram_id': message.chat.id},
+        {'$set': {'subscription': subscription}}
+    )
+    if subscription:
+        bot.send_message(message.chat.id, "Теперь вы будете получать сообщения о новых заездах", reply_markup=get_main_menu_markup())
+    else:
+        bot.send_message(message.chat.id, "Теперь вы не будете получать сообщения о новых заездах", reply_markup=get_main_menu_markup())
+    user_states[message.chat.id] = {'state': 'main_menu'}
+
+@bot.callback_query_handler(func=lambda call: call.data == "change_num_heats")
+def handle_change_num_heats(call):
+    bot.send_message(call.message.chat.id, "Введите количество заездов для анализа")
+    user_states[call.message.chat.id] = {'state': 'awaiting_num_heats'}
+
+def handle_num_heats(message):
+    try:
+        num_heats = int(message.text.strip())
+        users_collection.update_one(
+            {'telegram_id': message.chat.id},
+            {'$set': {'num_heats_analyze': num_heats}}
+        )
+        bot.send_message(message.chat.id, f"Для анализа будут использоваться {num_heats} заездов", reply_markup=get_main_menu_markup())
+    except ValueError:
+        bot.send_message(message.chat.id, "Пожалуйста, введите корректное число")
+    user_states[message.chat.id] = {'state': 'main_menu'}
 
 # Запуск бота
 bot.polling()
