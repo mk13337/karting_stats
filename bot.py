@@ -45,6 +45,8 @@ def handle_all_messages(message):
             handle_second_driver(message)
         elif state == 'awaiting_new_nickname':
             handle_new_nickname(message)
+        elif state == 'awaiting_subscription_change':
+            handle_subscription_change(message)
         elif state == 'awaiting_num_heats':
             handle_num_heats(message)
         else:
@@ -275,6 +277,7 @@ def handle_subscription_change(message):
     else:
         bot.send_message(message.chat.id, "Теперь вы не будете получать сообщения о новых заездах", reply_markup=get_main_menu_markup())
     user_states[message.chat.id] = {'state': 'main_menu'}
+
 
 @bot.callback_query_handler(func=lambda call: call.data == "change_num_heats")
 def handle_change_num_heats(call):
